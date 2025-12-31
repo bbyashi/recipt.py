@@ -5,7 +5,7 @@ import os
 
 def generate_receipt(data, theme="light", output="receipt.png"):
     # Background
-    bg_file = "assets/12.png" if theme=="light" else "assets/dark_bg.png"
+    bg_file = "assets/13.jpg" if theme=="light" else "assets/dark_bg.png"
     if not os.path.exists(bg_file):
         raise FileNotFoundError(f"Background file not found: {bg_file}")
     
