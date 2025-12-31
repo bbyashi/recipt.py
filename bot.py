@@ -2,9 +2,9 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from receipt import generate_receipt
 
-API_ID = 12345678
-API_HASH = "YOUR_API_HASH"
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+API_ID = 21189715
+API_HASH = "988a9111105fd2f0c5e21c2c2449edfd"
+BOT_TOKEN = "8149415790:AAE9L3ew6ENxgs7S9yYAXYGXej-NeAbunS4"
 
 app = Client("bank_receipt_bot",
              api_id=API_ID,
@@ -21,27 +21,29 @@ async def start(_, m):
     await m.reply("💸 **Bank Receipt Generator Bot**", reply_markup=kb)
 
 @app.on_callback_query()
-async def cb(_, cq):
+async def cb_handler(_, cq):
     uid = cq.from_user.id
-
+    data = users.get(uid)
+    
     if cq.data == "create":
         users[uid] = {}
         await cq.message.edit("👉 Enter **Paid To Name**:")
 
     elif cq.data in ["light", "dark"]:
+        if not data:
+            await cq.answer("⚠ Please start receipt creation first with /start", show_alert=True)
+            return
         theme = cq.data
-        data = users[uid]
         file = generate_receipt(data, theme)
         await cq.message.edit("✅ **Receipt Generated**")
         await cq.message.reply_photo(file)
-        users.pop(uid)
+        users.pop(uid, None)
 
 @app.on_message(filters.text & filters.private)
 async def text_handler(_, m):
     uid = m.from_user.id
     if uid not in users:
         return
-
     data = users[uid]
 
     if "to" not in data:
