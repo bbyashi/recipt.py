@@ -1,3 +1,4 @@
+# receipt.py
 import os
 import uuid
 import random
@@ -6,65 +7,80 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BG_PATH = os.path.join(BASE_DIR, "assets/pariwesh.png")
 
-# FONTS
-FONT_BOLD = ImageFont.truetype("DejaVuSans-Bold.ttf", 36)
-FONT_AMOUNT = ImageFont.truetype("DejaVuSans-Bold.ttf", 44)
-FONT_STATUS = ImageFont.truetype("DejaVuSans-Bold.ttf", 38)
-FONT_NORMAL = ImageFont.truetype("DejaVuSans.ttf", 34)  # ✅ normal font
+BG_PATH = os.path.join(BASE_DIR, "assets/dark_bg1.png")
 
-# COLORS
+FONT_VALUE = ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
+FONT_AMOUNT = ImageFont.truetype("DejaVuSans-Bold.ttf", 35)
+FONT_STATUS = ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
+
 GOLD = (255, 200, 90)
 GREEN = (120, 255, 120)
+RED = (255, 120, 120)
 
 
-def format_account_or_upi(value: str) -> str:
-    value = value.strip()
+def mask_account(acc: str):
+    acc = acc.strip()
 
-    # ✅ UPI case
-    if "@" in value:
-        return f"( UPI : {value} )"
+    # UPI
+    if "@" in acc:
+        return f"UPI - {acc}"
 
-    # ✅ Account number case (mask all except last 4)
-    last4 = value[-4:]
-    return f"( Acc No - XXXX XXXX {last4} )"
+    digits = "".join(filter(str.isdigit, acc))
+    if len(digits) >= 4:
+        return f"Acc No - XXXX XXXX {digits[-4:]}"
+    return acc
 
 
-def generate_receipt(paid_to: str, account_or_upi: str, amount: str):
+def generate_receipt(
+    *,
+    paid_to: str,
+    account_or_upi: str,
+    amount: str,
+    status: str = "SUCCESS",
+    fail_reason: str | None = None
+):
     img = Image.open(BG_PATH).convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # IST Date & Time
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     date = now.strftime("%d %b %Y")
     time = now.strftime("%I:%M %p")
 
-    # Auto UTR
     utr = str(random.randint(100000000000, 999999999999))
-
-    acc_text = format_account_or_upi(account_or_upi)
+    acc_text = mask_account(account_or_upi)
 
     positions = {
-        "paid_to": (540, 335),
-        "account": (470, 390),   # 👈 name ke just niche
-        "paid_by": (520, 470),
-        "amount": (510, 554),
-        "utr": (520, 655),
-        "date": (520, 740),
-        "time": (520, 825),
-        "status": (520, 920),
+        "paid_to": (470, 360),
+        "account": (470, 420),
+        "paid_by": (470, 530),
+        "amount": (470, 620),
+        "utr": (470, 720),
+        "date": (470, 810),
+        "time": (470, 890),
+        "status": (470, 970),
+        "reason": (470, 1000),
     }
 
-    # DRAW TEXT
-    draw.text(positions["paid_to"], paid_to, font=FONT_BOLD, fill=GOLD)
-    draw.text(positions["account"], acc_text, font=FONT_NORMAL, fill=GOLD)  # ✅ normal
-    draw.text(positions["paid_by"], "Prishwave Team", font=FONT_BOLD, fill=GOLD)
+    draw.text(positions["paid_to"], paid_to, font=FONT_VALUE, fill=GOLD)
+    draw.text(positions["account"], acc_text, font=FONT_VALUE, fill=GOLD)
+    draw.text(positions["paid_by"], "Prishwave Team", font=FONT_VALUE, fill=GOLD)
     draw.text(positions["amount"], f"₹{amount}", font=FONT_AMOUNT, fill=GOLD)
-    draw.text(positions["utr"], utr, font=FONT_BOLD, fill=GOLD)
-    draw.text(positions["date"], date, font=FONT_BOLD, fill=GOLD)
-    draw.text(positions["time"], time, font=FONT_BOLD, fill=GOLD)
-    draw.text(positions["status"], "SUCCESS", font=FONT_STATUS, fill=GREEN)
+    draw.text(positions["utr"], utr, font=FONT_VALUE, fill=GOLD)
+    draw.text(positions["date"], date, font=FONT_VALUE, fill=GOLD)
+    draw.text(positions["time"], time, font=FONT_VALUE, fill=GOLD)
+
+    if status == "SUCCESS":
+        draw.text(positions["status"], "SUCCESS", font=FONT_STATUS, fill=GREEN)
+    else:
+        draw.text(positions["status"], "FAILED", font=FONT_STATUS, fill=RED)
+        if fail_reason:
+            draw.text(
+                positions["reason"],
+                f"Reason - {fail_reason}",
+                font=FONT_VALUE,
+                fill=RED
+            )
 
     out = f"/tmp/receipt_{uuid.uuid4().hex}.png"
     img.save(out)
