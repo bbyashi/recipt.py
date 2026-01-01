@@ -1,60 +1,70 @@
+import os
+import uuid
+import random
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import uuid
 
-BG_PATH = "assets/dark_bg.png"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BG_PATH = os.path.join(BASE_DIR, "assets/pariwesh.png")
 
-FONT_REG = ImageFont.truetype("DejaVuSans.ttf", 34)
-FONT_BOLD = ImageFont.truetype("DejaVuSans-Bold.ttf", 40)
-FONT_SMALL = ImageFont.truetype("DejaVuSans.ttf", 30)
+# FONTS
+FONT_BOLD = ImageFont.truetype("DejaVuSans-Bold.ttf", 36)
+FONT_AMOUNT = ImageFont.truetype("DejaVuSans-Bold.ttf", 44)
+FONT_STATUS = ImageFont.truetype("DejaVuSans-Bold.ttf", 38)
+FONT_NORMAL = ImageFont.truetype("DejaVuSans.ttf", 34)  # ✅ normal font
 
-def generate_receipt(
-    paid_to: str,
-    paid_by: str,
-    amount: str,
-    utr: str,
-    status: str = "SUCCESS"
-):
-    # Load background
+# COLORS
+GOLD = (255, 200, 90)
+GREEN = (120, 255, 120)
+
+
+def format_account_or_upi(value: str) -> str:
+    value = value.strip()
+
+    # ✅ UPI case
+    if "@" in value:
+        return f"( UPI : {value} )"
+
+    # ✅ Account number case (mask all except last 4)
+    last4 = value[-4:]
+    return f"( Acc No - XXXX XXXX {last4} )"
+
+
+def generate_receipt(paid_to: str, account_or_upi: str, amount: str):
     img = Image.open(BG_PATH).convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # 🔥 AUTO DATE & TIME (IST)
+    # IST Date & Time
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    date = now.strftime("%d %b %Y")     # 06 Jan 2026
-    time = now.strftime("%I:%M %p")     # 09:15 PM
+    date = now.strftime("%d %b %Y")
+    time = now.strftime("%I:%M %p")
 
-    # Colors
-    WHITE = (245, 245, 245)
-    GOLD = (255, 200, 90)
-    GREEN = (120, 255, 120)
+    # Auto UTR
+    utr = str(random.randint(100000000000, 999999999999))
 
-    # Layout positions (matched to your template)
-    x_label = 140
-    x_value = 520
-    y = 360
-    gap = 85
+    acc_text = format_account_or_upi(account_or_upi)
 
-    fields = [
-        ("Paid To", paid_to),
-        ("Paid By", paid_by),
-        ("Amount", f"₹{amount}"),
-        ("UTR Number", utr),
-        ("Date", date),   # ← automatic
-        ("Time", time),   # ← automatic
-        ("Status", status),
-    ]
+    positions = {
+        "paid_to": (540, 335),
+        "account": (470, 390),   # 👈 name ke just niche
+        "paid_by": (520, 470),
+        "amount": (510, 554),
+        "utr": (520, 655),
+        "date": (520, 740),
+        "time": (520, 825),
+        "status": (520, 920),
+    }
 
-    for label, value in fields:
-        draw.text((x_label, y), label, font=FONT_SMALL, fill=WHITE)
-        draw.text(
-            (x_value, y),
-            value,
-            font=FONT_BOLD if label == "Amount" else FONT_REG,
-            fill=GREEN if label == "Status" else GOLD
-        )
-        y += gap
+    # DRAW TEXT
+    draw.text(positions["paid_to"], paid_to, font=FONT_BOLD, fill=GOLD)
+    draw.text(positions["account"], acc_text, font=FONT_NORMAL, fill=GOLD)  # ✅ normal
+    draw.text(positions["paid_by"], "Prishwave Team", font=FONT_BOLD, fill=GOLD)
+    draw.text(positions["amount"], f"₹{amount}", font=FONT_AMOUNT, fill=GOLD)
+    draw.text(positions["utr"], utr, font=FONT_BOLD, fill=GOLD)
+    draw.text(positions["date"], date, font=FONT_BOLD, fill=GOLD)
+    draw.text(positions["time"], time, font=FONT_BOLD, fill=GOLD)
+    draw.text(positions["status"], "SUCCESS", font=FONT_STATUS, fill=GREEN)
 
     out = f"/tmp/receipt_{uuid.uuid4().hex}.png"
     img.save(out)
