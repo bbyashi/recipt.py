@@ -1,59 +1,61 @@
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-from zoneinfo import ZoneInfo  # Python 3.9+
-import os
+from zoneinfo import ZoneInfo
+import uuid
 
-def generate_receipt(data, theme="light", output="receipt.png"):
-    # Background
-    bg_file = "assets/13.jpg" if theme=="light" else "assets/dark_bg.png"
-    if not os.path.exists(bg_file):
-        raise FileNotFoundError(f"Background file not found: {bg_file}")
-    
-    img = Image.open(bg_file).convert("RGBA")
+BG_PATH = "assets/dark_bg.png"
+
+FONT_REG = ImageFont.truetype("DejaVuSans.ttf", 34)
+FONT_BOLD = ImageFont.truetype("DejaVuSans-Bold.ttf", 40)
+FONT_SMALL = ImageFont.truetype("DejaVuSans.ttf", 30)
+
+def generate_receipt(
+    paid_to: str,
+    paid_by: str,
+    amount: str,
+    utr: str,
+    status: str = "SUCCESS"
+):
+    # Load background
+    img = Image.open(BG_PATH).convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    # Fonts
-    font_title = ImageFont.truetype("assets/font.ttf", 50)
-    font_label = ImageFont.truetype("assets/font.ttf", 32)
-    font_value = ImageFont.truetype("assets/font.ttf", 36)
-    font_small = ImageFont.truetype("assets/font.ttf", 24)
-
-    # Auto date & time (IST)
+    # 🔥 AUTO DATE & TIME (IST)
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    date = now.strftime("%d-%m-%Y")
-    time = now.strftime("%H:%M:%S")
+    date = now.strftime("%d %b %Y")     # 06 Jan 2026
+    time = now.strftime("%I:%M %p")     # 09:15 PM
 
-    # Title
-    draw.text((250, 40), "BANK PAYMENT RECEIPT", font=font_title, fill="#1e3a8a")
+    # Colors
+    WHITE = (245, 245, 245)
+    GOLD = (255, 200, 90)
+    GREEN = (120, 255, 120)
 
-    y_start = 180
+    # Layout positions (matched to your template)
+    x_label = 140
+    x_value = 520
+    y = 360
     gap = 85
+
     fields = [
-        ("Paid To", data["to"]),
-        ("Paid By", data["from"]),
-        ("Amount", f"₹ {data['amount']}"),
-        ("UTR Number", data["utr"]),
-        ("Date", date),
-        ("Time", time),
-        ("Status", "SUCCESS")
+        ("Paid To", paid_to),
+        ("Paid By", paid_by),
+        ("Amount", f"₹{amount}"),
+        ("UTR Number", utr),
+        ("Date", date),   # ← automatic
+        ("Time", time),   # ← automatic
+        ("Status", status),
     ]
 
-    for i, (label, value) in enumerate(fields):
-        draw.text((120, y_start + i*gap), label, font=font_label, fill="#6b7280")
-        draw.text((430, y_start + i*gap), value, font=font_value, fill="#111827")
+    for label, value in fields:
+        draw.text((x_label, y), label, font=FONT_SMALL, fill=WHITE)
+        draw.text(
+            (x_value, y),
+            value,
+            font=FONT_BOLD if label == "Amount" else FONT_REG,
+            fill=GREEN if label == "Status" else GOLD
+        )
+        y += gap
 
-    # Footer logos
-    logos = ["assets/gpay.png", "assets/paytm.png", "assets/upi.png"]
-    x = 160
-    for logo in logos:
-        if not os.path.exists(logo):
-            continue
-        icon = Image.open(logo).convert("RGBA").resize((100, 100))
-        img.paste(icon, (x, 940), icon)
-        x += 240
-
-    # Footer note
-    draw.text((240, 880), "This is a system generated receipt", font=font_small, fill="#6b7280")
-
-    img.save(output)
-    return output
+    out = f"/tmp/receipt_{uuid.uuid4().hex}.png"
+    img.save(out)
+    return out
