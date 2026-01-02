@@ -26,44 +26,45 @@ def normalize(text):
 def extract_from_text(text):
     text = normalize(text)
 
-    # ---------- ACCOUNT / UPI ----------
-    upi = re.search(r"\b[a-z0-9._-]+@[a-z]+\b", text)
-    if upi:
-        account = upi.group()
-    else:
-        nums = re.findall(r"\b\d{9,18}\b", text)
-        account = nums[0] if nums else None
+    # ---------- ACCOUNT ----------
+    account_match = re.search(r"(?:account\s*(?:no|number)?\s*[:\-,]?\s*|(?<!\d))(\d{9,18})", text, flags=re.IGNORECASE)
+    account = account_match.group(1) if account_match else None
 
     # ---------- IFSC ----------
-    ifsc = re.search(r"\b[a-z]{4}0\d{6}\b", text)
-    ifsc = ifsc.group().upper() if ifsc else None
+    ifsc_match = re.search(r"\b[a-z]{4}0\d{6}\b", text, flags=re.IGNORECASE)
+    ifsc = ifsc_match.group().upper() if ifsc_match else None
 
     # ---------- NAME ----------
     name = None
     for line in text.split("\n"):
         line = line.strip()
-        if len(line.split()) < 2:  # ignore very short lines or numbers
+        if len(line.split()) < 1:
             continue
 
         # ignore lines with bank/account/ifsc/upi keywords
-        if any(k in line for k in ["bank", "account", "ifsc", "@"]):
+        if any(k in line.lower() for k in ["bank", "ifsc", "@"]):
             continue
 
         # ignore lines having Indian bank names
         if any(b in line.lower() for b in INDIAN_BANKS):
             continue
 
-        # remove unwanted keywords like 'name', 'account holder', 'beneficiary'
-        line = re.sub(r"^(name|account holder|beneficiary)\s+", "", line, flags=re.IGNORECASE)
+        line = line.strip()
 
-        # match 2–5 word person name
-        m = re.fullmatch(r"[a-z]{3,}(?:\s+[a-z]{3,}){1,4}", line.lower())
+        # remove leading numbering or emojis (like 1️⃣, 1., *, -)
+        line = re.sub(r"^[\d\W]*", "", line)
+        # remove unwanted prefixes like 'name', 'holder name', 'account holder', 'beneficiary'
+        line = re.sub(r"^(name|holder name|1️⃣ Name:|account holder|beneficiary)\s*[:\-,]?\s*", "", line, flags=re.IGNORECASE)
+
+        # match 1–5 word person name
+        m = re.search(r"[a-z]{3,}(?:\s+[a-z]{2,}){0,4}", line.lower())
         if m:
             name = m.group()
             break
 
     name = name.title() if name else None
     return name, account, ifsc
+
 
 
 
