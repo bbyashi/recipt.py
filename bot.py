@@ -4,7 +4,7 @@ from receipt import generate_receipt
 
 API_ID = 21189715
 API_HASH = "988a9111105fd2f0c5e21c2c2449edfd"
-BOT_TOKEN = "8149415790:AAE9L3ew6ENxgs7S9yYAXYGXej-NeAbunS4"
+BOT_TOKEN = "7947877880:AAEn3SB0pAoyDq2AYeYkkv0i05AF6zykT24"
 
 app = Client("receipt_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
@@ -80,15 +80,17 @@ async def done_cmd(_, m):
     if not m.reply_to_message or not m.reply_to_message.text:
         return await m.reply("❌ Reply to bank message")
 
+    # Extract details
     name, account, ifsc = extract_from_text(m.reply_to_message.text)
-
     if not name or not account:
         return await m.reply("❌ Name / Account detect nahi hua")
 
-    file = generate_receipt(paid_to=name, account_or_upi=account,
-                            amount=amount, status="SUCCESS")
+    # Generate receipt
+    file = generate_receipt(paid_to=name, account_or_upi=account, amount=amount, status="SUCCESS")
 
-    await m.reply_photo(file, caption=f"✅ Receipt for {name}")
+    # Reply to original message (no username tagging)
+    await m.reply_to_message.reply_photo(file, caption=f"✅ Receipt for {name}")
+
 
 
 @app.on_message(filters.command("fail"))
@@ -104,15 +106,18 @@ async def fail_cmd(_, m):
     if not m.reply_to_message or not m.reply_to_message.text:
         return await m.reply("❌ Reply to bank message")
 
+    # Extract details
     name, account, ifsc = extract_from_text(m.reply_to_message.text)
-
     if not name or not account:
         return await m.reply("❌ Name / Account detect nahi hua")
 
+    # Generate failed receipt
     file = generate_receipt(paid_to=name, account_or_upi=account,
                             amount=amount, status="FAILED", fail_reason=reason)
 
-    await m.reply_photo(file, caption=f"❌ Payment Failed for {name}")
+    # Reply to original message (no username tagging)
+    await m.reply_to_message.reply_photo(file, caption=f"❌ Payment Failed for {name}")
+
 
 
 print("🤖 Receipt Bot Running...")
