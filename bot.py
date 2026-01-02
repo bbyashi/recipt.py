@@ -19,6 +19,7 @@ db = mongo["receiptbot"]
 sudo_db = db["sudo_users"]
 users_db = db["users"]
 
+
 # ---------------- SUDO / OWNER SYSTEM ----------------
 def is_sudo(user_id: int):
     if user_id == OWNER_ID:  # owner always sudo
@@ -199,6 +200,23 @@ async def broadcast_cmd(_, m):
             continue
 
     await m.reply(f"✅ Broadcast sent to {count} users")
+
+# ---------- COMMAND: /authlist ----------
+@app.on_message(filters.command("authlist"))
+async def authlist_cmd(_, m):
+    user = m.from_user
+    if user.id != OWNER_ID and not sudo_db.find_one({"user_id": user.id}):
+        return await m.reply("❌ You are not authorized to view the auth list.")
+
+    sudoers_list = list(sudo_db.find())
+    if len(sudoers_list) == 0:
+        return await m.reply("No sudoers found.")
+
+    text = "👑 Current Sudoers:\n"
+    for s in sudoers_list:
+        text += f"- `{s['user_id']}`\n"
+
+    await m.reply(text)
 
 # ---------------- RUN BOT ----------------
 print("🤖 Receipt Bot Running...")
