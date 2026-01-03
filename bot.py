@@ -34,7 +34,7 @@ def remove_sudo(user_id: int):
 
 # ---------------- INDIAN BANKS ----------------
 INDIAN_BANKS = {
-    "sbi","state bank","hdfc","icici","axis","canara","pnb","punjab national",
+    "sbi","state bank","hdfc","icici","axis","canara","canara bank","pnb","punjab national",
     "bank of baroda","bob","union bank","ubi","indian bank","idbi","yes bank",
     "kotak","bank of india","boi","central bank","uco","indusind","rbl",
     "federal","south indian","karnataka bank","karur vysya","kvb"
@@ -65,35 +65,43 @@ def extract_from_text(text):
     ifsc_match = re.search(r"\b[a-z]{4}0[a-z0-9]{6}\b", text, flags=re.IGNORECASE)
     ifsc = ifsc_match.group().upper() if ifsc_match else None
 
-    # ---------- NAME (KEY-VALUE STYLE) ----------
+    # ---------- NAME ----------
     name = None
 
+    # 1️⃣ key-value format
     kv_name = re.search(
-        r"(account holder name|holder name|account holder|beneficiary|name)\s*[:\-]\s*([a-z ]{4,40})",
+        r"(account holder name|account holder|holder name|beneficiary|name)\s*[:\-]\s*([a-z ]{4,40})",
         text, flags=re.IGNORECASE
     )
     if kv_name:
         name = kv_name.group(2).strip()
 
-    # ---------- NAME (PLAIN LINE FALLBACK) ----------
+    # 2️⃣ clean-line fallback
     if not name:
         for line in text.split("\n"):
-            line = line.strip()
-            if not line:
+            raw = line.strip()
+            low = raw.lower()
+
+            if not raw:
                 continue
 
-            if any(k in line for k in ["bank", "ifsc", "account", "@", "number"]):
+            # ❌ skip bank / account / ifsc lines
+            if any(w in low for w in ["bank", "ifsc", "account", "number", "@"]):
                 continue
 
-            line = re.sub(r"^[\d\W]+", "", line)
+            # ❌ skip indian bank words
+            if any(b in low for b in BANK_WORDS):
+                continue
 
-            m = re.fullmatch(r"[a-z ]{4,40}", line)
-            if m:
-                name = m.group()
+            raw = re.sub(r"^[\d\W]+", "", raw)
+
+            if re.fullmatch(r"[A-Za-z ]{4,40}", raw):
+                name = raw
                 break
 
     name = name.title() if name else None
     return name, account, ifsc
+
 
 
 
