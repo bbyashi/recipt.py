@@ -75,7 +75,7 @@ def extract_from_text(text):
             continue
         line = re.sub(r"^[\d\W]*", "", line)
         line = re.sub(
-            r"^(name|holder name|account holder|beneficiary)\s*[:\-,]?\s*",
+            r"^(name|holder name|account holder|beneficiary|Account Holder Name)\s*[:\-,]?\s*",
             "",
             line, flags=re.IGNORECASE
         )
