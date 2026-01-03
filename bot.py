@@ -68,7 +68,7 @@ def extract_from_text(text):
     # ---------- NAME ----------
     name = None
 
-    # 1️⃣ key-value format
+    # 1️⃣ KEY VALUE FORMAT
     kv_name = re.search(
         r"(account holder name|account holder|holder name|beneficiary|name)\s*[:\-]\s*([a-z ]{4,40})",
         text, flags=re.IGNORECASE
@@ -76,7 +76,7 @@ def extract_from_text(text):
     if kv_name:
         name = kv_name.group(2).strip()
 
-    # 2️⃣ clean-line fallback
+    # 2️⃣ CLEAN LINE FALLBACK
     if not name:
         for line in text.split("\n"):
             raw = line.strip()
@@ -85,12 +85,16 @@ def extract_from_text(text):
             if not raw:
                 continue
 
-            # ❌ skip bank / account / ifsc lines
-            if any(w in low for w in ["bank", "ifsc", "account", "number", "@"]):
+            # ❌ skip technical lines only
+            if any(w in low for w in ["ifsc", "@"]):
                 continue
 
-            # ❌ skip indian bank words
-            if any(b in low for b in BANK_WORDS):
+            # ❌ block bank names
+            if any(b in low for b in INDIAN_BANKS):
+                continue
+
+            # ❌ skip account numbers
+            if re.search(r"\d{6,}", raw):
                 continue
 
             raw = re.sub(r"^[\d\W]+", "", raw)
@@ -101,6 +105,7 @@ def extract_from_text(text):
 
     name = name.title() if name else None
     return name, account, ifsc
+
 
 
 
