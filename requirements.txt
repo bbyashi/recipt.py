@@ -2,3 +2,4 @@ pyrogram
 tgcrypto
 pillow
 num2words
+pymongo
