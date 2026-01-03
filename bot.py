@@ -68,15 +68,15 @@ def extract_from_text(text):
     # ---------- NAME ----------
     name = None
 
-    # 1️⃣ KEY VALUE FORMAT
+    # 1️⃣ KEY VALUE FORMAT (must be first)
     kv_name = re.search(
-        r"(account holder name|account holder|holder name|beneficiary|name)\s*[:\-]\s*([a-z ]{4,40})",
+        r"(account holder name|account holder|holder name|beneficiary|name)\s*[:\-]\s*([a-z ]{2,40})",
         text, flags=re.IGNORECASE
     )
     if kv_name:
         name = kv_name.group(2).strip()
 
-    # 2️⃣ CLEAN LINE FALLBACK
+    # 2️⃣ CLEAN LINE FALLBACK (if no key-value name)
     if not name:
         for line in text.split("\n"):
             raw = line.strip()
@@ -85,26 +85,26 @@ def extract_from_text(text):
             if not raw:
                 continue
 
-            # ❌ skip technical lines only
-            if any(w in low for w in ["ifsc", "@"]):
+            # skip lines that are pure IFSC / UPI
+            if re.fullmatch(r"[a-z]{4}0[a-z0-9]{6}", low) or re.fullmatch(r"[a-z0-9._-]+@[a-z0-9._-]+", low):
                 continue
 
-            # ❌ block bank names
+            # skip lines that are mostly digits (account numbers)
+            if re.fullmatch(r"\d{6,18}", raw):
+                continue
+
+            # ❌ skip line if it contains only bank name words (avoid picking bank name)
             if any(b in low for b in INDIAN_BANKS):
                 continue
 
-            # ❌ skip account numbers
-            if re.search(r"\d{6,}", raw):
-                continue
-
-            raw = re.sub(r"^[\d\W]+", "", raw)
-
-            if re.fullmatch(r"[A-Za-z ]{4,40}", raw):
-                name = raw
+            # pick if line is mostly alphabets and spaces
+            cleaned = re.sub(r"[^A-Za-z ]", "", raw)
+            if 4 <= len(cleaned) <= 40:
+                name = cleaned.title()
                 break
 
-    name = name.title() if name else None
     return name, account, ifsc
+
 
 
 
