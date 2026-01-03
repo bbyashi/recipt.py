@@ -52,40 +52,49 @@ def extract_from_text(text):
     text = normalize(text)
 
     # ---------- ACCOUNT / UPI ----------
-    account_match = re.search(
-        r"(?:account\s*(?:no|number)?\s*[:\-,]?\s*)?(\d{9,18})",
-        text, flags=re.IGNORECASE
-    )
+    account = None
     upi_match = re.search(r"[a-z0-9._-]+@[a-z0-9._-]+", text, flags=re.IGNORECASE)
-    account = account_match.group(1) if account_match else (upi_match.group() if upi_match else None)
+    if upi_match:
+        account = upi_match.group()
+    else:
+        nums = re.findall(r"\b\d{9,18}\b", text)
+        if nums:
+            account = nums[0]
 
     # ---------- IFSC ----------
-    ifsc_match = re.search(r"\b[a-z]{4}0\d{6}\b", text, flags=re.IGNORECASE)
+    ifsc_match = re.search(r"\b[a-z]{4}0[a-z0-9]{6}\b", text, flags=re.IGNORECASE)
     ifsc = ifsc_match.group().upper() if ifsc_match else None
 
-    # ---------- NAME ----------
+    # ---------- NAME (KEY-VALUE STYLE) ----------
     name = None
-    for line in text.split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        if any(k in line.lower() for k in ["bank", "account", "ifsc", "@"]):
-            continue
-        if any(b in line.lower() for b in INDIAN_BANKS):
-            continue
-        line = re.sub(r"^[\d\W]*", "", line)
-        line = re.sub(
-            r"^(name|holder name|account holder|beneficiary|Account Holder Name)\s*[:\-,]?\s*",
-            "",
-            line, flags=re.IGNORECASE
-        )
-        m = re.search(r"[a-z]{2,}(?:\s+[a-z]{2,}){0,4}", line.lower())
-        if m:
-            name = m.group()
-            break
+
+    kv_name = re.search(
+        r"(account holder name|holder name|account holder|beneficiary|name)\s*[:\-]\s*([a-z ]{4,40})",
+        text, flags=re.IGNORECASE
+    )
+    if kv_name:
+        name = kv_name.group(2).strip()
+
+    # ---------- NAME (PLAIN LINE FALLBACK) ----------
+    if not name:
+        for line in text.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+
+            if any(k in line for k in ["bank", "ifsc", "account", "@", "number"]):
+                continue
+
+            line = re.sub(r"^[\d\W]+", "", line)
+
+            m = re.fullmatch(r"[a-z ]{4,40}", line)
+            if m:
+                name = m.group()
+                break
 
     name = name.title() if name else None
     return name, account, ifsc
+
 
 
 # ---------------- /start COMMAND ----------------
